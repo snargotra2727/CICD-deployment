@@ -1,0 +1,45 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer {
+  background-color: #f8f9fa;
+  padding: 20px 0;
+  text-align: center;
+  border-top: 1px solid #dee2e6;
+  font-size: 0.9rem;
+}
+
+.status-online {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.status-offline {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.status-checking {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.backend-details {
+  margin-top: 5px;
+  color: #6c757d;
+  font-size: 0.8rem;
+}

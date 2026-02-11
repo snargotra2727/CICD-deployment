@@ -1,0 +1,43 @@
+import { Component, OnInit } from '@angular/core';
+import { ApiService } from '../../services/api.service';
+
+@Component({
+  selector: 'app-home',
+  templateUrl: './home.component.html',
+  styleUrls: ['./home.component.css'],
+  standalone: false
+})
+export class HomeComponent implements OnInit {
+  welcomeMessage = 'Welcome to User Management System';
+  backendStatus: string = 'Checking...';
+  databaseStatus: string = 'Offline'; // You can update this later
+  
+  features = [
+    'User Registration & Authentication',
+    'CRUD Operations for User Management',
+    'Secure API with JWT Tokens',
+    'MySQL Database Integration',
+    'Docker Containerization',
+    'CI/CD Pipeline'
+  ];
+
+  constructor(private apiService: ApiService) {}
+
+  ngOnInit(): void {
+    console.log('Home component initialized');
+    this.checkBackendStatus();
+  }
+
+  checkBackendStatus(): void {
+    this.apiService.checkHealth().subscribe({
+      next: (response) => {
+        console.log('HomeComponent: Backend is online');
+        this.backendStatus = 'Online';
+      },
+      error: (error) => {
+        console.error('HomeComponent: Backend is offline', error);
+        this.backendStatus = 'Offline';
+      }
+    });
+  }
+}
