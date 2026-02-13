@@ -1,111 +1,19 @@
-
 services:
-  # Backend API Service
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: production
+    build: ./backend
     container_name: user-management-backend
-    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"  # Change host port to 3001
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=${DB_USER:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-rootpassword}
-      - DB_NAME=${DB_NAME:-user_management}
-      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key_change_me}
-    env_file:
-      - ./backend/.env
-    volumes:
-      - backend_logs:/app/logs
-    networks:
-      - user-management-network
-    depends_on:
-      mysql:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # Frontend Angular Service
-  frontend:
-    build:
-      context: ./frontend/user-management-ui
-      dockerfile: Dockerfile
-    container_name: user-management-frontend
     restart: unless-stopped
+
+  frontend:
+    build: ./frontend/user-management-ui
+    container_name: user-management-frontend
     ports:
       - "80:80"
-    environment:
-      - API_URL=http://backend:3000
-    networks:
-      - user-management-network
     depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-
-  # MySQL Database
-  mysql:
-    image: mysql:8.0
-    container_name: user-management-mysql
+      - backend
     restart: unless-stopped
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-user_management}
-      - MYSQL_USER=${MYSQL_USER:-user}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-userpassword}
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - user-management-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  # phpMyAdmin (Optional - for database management)
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: user-management-phpmyadmin
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    environment:
-      - PMA_HOST=mysql
-      - PMA_PORT=3306
-      - UPLOAD_LIMIT=100M
-    networks:
-      - user-management-network
-    depends_on:
-      - mysql
-    profiles:
-      - dev
-
-networks:
-  user-management-network:
-    driver: bridge
-
-volumes:
-  mysql_data:
-    name: user-management-mysql-data
-  backend_logs:
-    name: user-management-backend-logs
