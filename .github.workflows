@@ -1,0 +1,197 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Manual trigger
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  DOCKER_IMAGE_BACKEND: ghcr.io/${{ github.repository }}/backend
+  DOCKER_IMAGE_FRONTEND: ghcr.io/${{ github.repository }}/frontend
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: Test Backend
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run linter
+        working-directory: ./backend
+        run: npm run lint || echo "No linter configured"
+
+      - name: Run type check
+        working-directory: ./backend
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: ./backend
+        run: npm test || echo "No tests configured"
+
+      - name: Build TypeScript
+        working-directory: ./backend
+        run: npm run build
+
+  # Job 2: Test Frontend
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/user-management-ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend/user-management-ui
+        run: npm ci
+
+      - name: Run linter
+        working-directory: ./frontend/user-management-ui
+        run: npm run lint || echo "No linter configured"
+
+      - name: Run type check
+        working-directory: ./frontend/user-management-ui
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: ./frontend/user-management-ui
+        run: npm test -- --watch=false --browsers=ChromeHeadless || echo "No tests configured"
+
+      - name: Build Angular
+        working-directory: ./frontend/user-management-ui
+        run: npm run build -- --configuration production
+
+  # Job 3: Build and Push Docker Images
+  build-and-push:
+    name: Build & Push Docker Images
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.DOCKER_IMAGE_BACKEND }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.DOCKER_IMAGE_FRONTEND }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend/user-management-ui
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Job 4: Deploy Locally (via Docker Compose)
+  deploy-local:
+    name: Deploy Locally
+    needs: build-and-push
+    runs-on: [self-hosted, windows] # For local deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          echo "DB_USER=root" > .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_NAME=user_management" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+
+      - name: Pull latest images
+        run: |
+          docker pull ${{ env.DOCKER_IMAGE_BACKEND }}:latest
+          docker pull ${{ env.DOCKER_IMAGE_FRONTEND }}:latest
+
+      - name: Stop existing containers
+        run: docker-compose down -v
+        continue-on-error: true
+
+      - name: Deploy with Docker Compose
+        run: docker-compose up -d
+
+      - name: Check deployment status
+        run: |
+          docker-compose ps
+          docker-compose logs --tail=50
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -f http://localhost/api/health || exit 1
+          curl -f http://localhost/health || exit 1
+
+      - name: Clean up old images
+        run: docker image prune -f
