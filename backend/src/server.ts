@@ -64,4 +64,4 @@ app.listen(PORT, () => {
   console.log(`🧪 Test: http://127.0.0.1:${PORT}/api/test`);
   console.log('🌐 Frontend: http://127.0.0.1:4200');
   console.log('='.repeat(50));
-});
+});// CI/CD test trigger
