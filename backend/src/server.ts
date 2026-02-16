@@ -65,3 +65,14 @@ app.listen(PORT, () => {
   console.log('🌐 Frontend: http://127.0.0.1:4200');
   console.log('='.repeat(50));
 });// CI/CD test trigger
+
+// CI/CD Test endpoint
+app.get('/api/pipeline-test', (_req, res) => {
+  res.json({
+    message: '✅ CI/CD Pipeline is working!',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    deployedBy: 'GitHub Actions',
+    date: new Date().toLocaleString()
+  });
+});

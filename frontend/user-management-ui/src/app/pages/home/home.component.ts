@@ -21,6 +21,7 @@ export class HomeComponent implements OnInit {
     'CI/CD Pipeline'
   ];
 
+  currentDate: string = new Date().toLocaleString();
   constructor(
     private apiService: ApiService,
     private cdr: ChangeDetectorRef
