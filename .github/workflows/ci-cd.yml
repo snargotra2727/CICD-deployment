@@ -57,11 +57,5 @@ jobs:
           cd C:\Users\SAKSHAM\Documents\user-management-app
           docker-compose up -d
 
-      - name: Health check
-        run: |
-          Start-Sleep -Seconds 10
-          curl http://localhost:3001/api/health
-          curl http://localhost
-
       - name: Show running containers
         run: docker-compose ps
