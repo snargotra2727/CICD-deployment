@@ -1,0 +1,20 @@
+name: Test Self-Hosted Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-local:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Show system info
+        run: |
+          Get-ComputerInfo
+          docker --version
+          docker-compose --version
+      - name: Test directory
+        run: |
+          pwd
+          ls
