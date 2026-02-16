@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, test-ci-cd ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -11,55 +11,57 @@ jobs:
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: |
-          cd backend
-          npm install
-
-      - name: Run type check
-        run: |
-          cd backend
-          npx tsc --noEmit
-
-      - name: Build backend
-        run: |
-          cd backend
-          npm run build
+      - run: cd backend && npm install
+      - run: cd backend && npx tsc --noEmit
+      - run: cd backend && npm run build
 
   test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: cd frontend/user-management-ui && npm install
+      - run: cd frontend/user-management-ui && npm run build
+
+  deploy-local:
+    name: Deploy Locally
+    needs: [test-backend, test-frontend]
+    runs-on: self-hosted
+    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
+      - name: Stop and remove old containers
         run: |
-          cd frontend/user-management-ui
-          npm install
+          cd C:\Users\SAKSHAM\Documents\user-management-app
+          docker-compose down -v
+          docker system prune -f
 
-      - name: Run type check
+      - name: Build fresh images
         run: |
-          cd frontend/user-management-ui
-          npx tsc --noEmit
+          cd C:\Users\SAKSHAM\Documents\user-management-app
+          docker-compose build --no-cache
 
-      - name: Build frontend
+      - name: Start containers
         run: |
-          cd frontend/user-management-ui
-          npm run build -- --configuration production
+          cd C:\Users\SAKSHAM\Documents\user-management-app
+          docker-compose up -d
+
+      - name: Health check
+        run: |
+          Start-Sleep -Seconds 10
+          curl http://localhost:3001/api/health
+          curl http://localhost
+
+      - name: Show running containers
+        run: docker-compose ps
