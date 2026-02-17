@@ -69,7 +69,7 @@ app.listen(PORT, () => {
 // CI/CD Test endpoint
 app.get('/api/pipeline-test', (_req, res) => {
   res.json({
-    message: '✅ CI/CD Pipeline is working!',
+    message: '✅ CI/CD Pipeline is working fine!',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     deployedBy: 'GitHub Actions',
