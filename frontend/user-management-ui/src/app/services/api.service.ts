@@ -6,13 +6,43 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class ApiService {
+  private apiUrl = 'http://localhost:3001/api';
+
   constructor(private http: HttpClient) {}
 
-  checkHealth(): Observable<any> {
-    return this.http.get('/api/health');
+  // Root endpoint
+  getRoot(): Observable<any> {
+    return this.http.get('http://localhost:3001/');
   }
 
-  testConnection(): Observable<any> {
-    return this.http.get('/api/test');
+  // Health check
+  checkHealth(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/health`);
+  }
+
+  // Dashboard stats
+  getDashboardStats(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/dashboard`);
+  }
+
+  // User endpoints
+  getUsers(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/users`);
+  }
+
+  getUser(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/users/${id}`);
+  }
+
+  createUser(userData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/users`, userData);
+  }
+
+  updateUser(id: number, userData: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/users/${id}`, userData);
+  }
+
+  deleteUser(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/users/${id}`);
   }
 }

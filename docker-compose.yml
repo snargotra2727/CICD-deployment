@@ -1,19 +1,60 @@
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: user-management-mysql
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=user_management
+      - MYSQL_USER=app_user
+      - MYSQL_PASSWORD=app_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - user-management-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build: ./backend
     container_name: user-management-backend
+    restart: unless-stopped
     ports:
-      - "3001:3000"  # Change host port to 3001
+      - "3001:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
-    restart: unless-stopped
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=app_user
+      - DB_PASSWORD=app_password
+      - DB_NAME=user_management
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - user-management-network
 
   frontend:
     build: ./frontend/user-management-ui
     container_name: user-management-frontend
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
-    restart: unless-stopped
+    networks:
+      - user-management-network
+
+networks:
+  user-management-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

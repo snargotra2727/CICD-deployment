@@ -1,10 +1,10 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { HomeComponent } from './pages/home/home.component';
+import { UserManagementComponent } from './user-management/user-management.component';
 
 const routes: Routes = [
-  { path: '', component: HomeComponent, pathMatch: 'full' },
-  { path: '**', redirectTo: '' } // Redirect unknown paths to home
+  { path: '', component: UserManagementComponent },
+  { path: '**', redirectTo: '' }
 ];
 
 @NgModule({
