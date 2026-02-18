@@ -5,7 +5,6 @@
   "projects": {
     "user-management-ui": {
       "projectType": "application",
-      "schematics": {},
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
@@ -16,7 +15,7 @@
             "outputPath": "dist/user-management-ui",
             "index": "src/index.html",
             "main": "src/main.ts",
-            "polyfills": ["zone.js"],
+            "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": ["src/favicon.ico", "src/assets"],
             "styles": ["src/styles.css"],
@@ -32,34 +31,10 @@
                 }
               ],
               "outputHashing": "all"
-            },
-            "development": {
-              "buildOptimizer": false,
-              "optimization": false,
-              "vendorChunk": true,
-              "extractLicenses": false,
-              "sourceMap": true,
-              "namedChunks": true
             }
-          },
-          "defaultConfiguration": "production"
-        },
-        "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
-          "configurations": {
-            "production": {
-              "buildTarget": "user-management-ui:build:production"
-            },
-            "development": {
-              "buildTarget": "user-management-ui:build:development"
-            }
-          },
-          "defaultConfiguration": "development"
+          }
         }
       }
     }
-  },
-  "cli": {
-    "analytics": "1dbcb884-5098-4ba1-b7d3-dcf991f0958b"
   }
 }
