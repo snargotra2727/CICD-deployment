@@ -7,7 +7,7 @@ services:
     container_name: user-management-backend-dev
     ports:
       - "3000:3000"
-      - "9229:9229" # Debug port
+    #  - "9229:9229" # Debug port
     environment:
       - NODE_ENV=development
       - PORT=3000

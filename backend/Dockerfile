@@ -15,6 +15,6 @@ RUN npm install
 # Copy source code
 COPY src ./src
 
-EXPOSE 3000 9229
+EXPOSE 3000
 
 CMD ["nodemon", "--exec", "ts-node", "src/server.ts"]
