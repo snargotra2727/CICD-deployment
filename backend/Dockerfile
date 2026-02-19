@@ -1,15 +1,20 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
+
 WORKDIR /app
+
+# Install nodemon for hot-reload
+RUN npm install -g nodemon ts-node
+
+# Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
-RUN npm install
-COPY src ./src
-RUN npm run build
 
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --only=production
-COPY --from=builder /app/dist ./dist
-EXPOSE 3000
-CMD ["node", "dist/server.js"]
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY src ./src
+
+EXPOSE 3000 9229
+
+CMD ["nodemon", "--exec", "ts-node", "src/server.ts"]

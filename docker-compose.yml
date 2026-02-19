@@ -1,18 +1,56 @@
 services:
+  # Backend with hot-reload for development
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: user-management-backend-dev
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Debug port
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=user_management
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/package.json:/app/package.json
+    networks:
+      - user-management-network
+    depends_on:
+      - mysql
+
+  # Frontend with hot-reload for development
+  frontend:
+    build:
+      context: ./frontend/user-management-ui
+      dockerfile: Dockerfile
+    container_name: user-management-frontend-dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend/user-management-ui/src:/app/src
+      - ./frontend/user-management-ui/package.json:/app/package.json
+    networks:
+      - user-management-network
+
+  # MySQL database
   mysql:
     image: mysql:8.0
-    container_name: user-management-mysql
-    restart: unless-stopped
+    container_name: user-management-mysql-dev
     ports:
       - "3307:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=user_management
-      - MYSQL_USER=app_user
-      - MYSQL_PASSWORD=app_password
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=userpassword
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data_dev:/var/lib/mysql
     networks:
       - user-management-network
     healthcheck:
@@ -21,40 +59,9 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
-    build: ./backend
-    container_name: user-management-backend
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=app_user
-      - DB_PASSWORD=app_password
-      - DB_NAME=user_management
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - user-management-network
-
-  frontend:
-    build: ./frontend/user-management-ui
-    container_name: user-management-frontend
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - user-management-network
-
 networks:
   user-management-network:
     driver: bridge
 
 volumes:
-  mysql_data:
+  mysql_data_dev:
