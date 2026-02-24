@@ -59,30 +59,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          path: C:\Users\SAKSHAM\Documents\user-management-app
+        # This will checkout to: C:\actions-runner\_work\CICD-deployment\CICD-deployment
 
-      - name: Deployment Info
+      - name: Show current directory
         run: |
-          Write-Host "=== DEPLOYMENT STARTED ===" -ForegroundColor Cyan
-          Write-Host "Time: $(Get-Date)" -ForegroundColor Yellow
-          Write-Host "Host: $env:COMPUTERNAME" -ForegroundColor Yellow
-          Write-Host "Working Dir: $(Get-Location)" -ForegroundColor Yellow
+          Write-Host "Current directory: $(Get-Location)" -ForegroundColor Cyan
+          Write-Host "Files in directory:" -ForegroundColor Yellow
+          Get-ChildItem
 
       - name: Stop and remove old containers
         run: |
-          Set-Location -Path "C:\Users\SAKSHAM\Documents\user-management-app"
+          # Use the checked out code location
+          cd ${{ github.workspace }}
           docker-compose down -v
           docker system prune -f
 
       - name: Build fresh images
         run: |
-          Set-Location -Path "C:\Users\SAKSHAM\Documents\user-management-app"
+          cd ${{ github.workspace }}
           docker-compose build --no-cache
 
       - name: Start containers
         run: |
-          Set-Location -Path "C:\Users\SAKSHAM\Documents\user-management-app"
+          cd ${{ github.workspace }}
           docker-compose up -d
 
       - name: Wait for services
