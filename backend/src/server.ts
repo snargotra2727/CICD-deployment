@@ -3,7 +3,7 @@ import cors from 'cors';
 import mysql from 'mysql2/promise';
 
 const app = express();
-const PORT = 3000;  // Fixed port for development
+const PORT = 3000;
 
 // Create MySQL connection pool
 const pool = mysql.createPool({
@@ -45,7 +45,8 @@ app.use(express.urlencoded({ extended: true }));
 
     // Insert sample data if table is empty
     const [rows] = await connection.query('SELECT COUNT(*) as count FROM users');
-    if (rows[0].count === 0) {
+    const countResult = rows as any[];
+    if (countResult[0].count === 0) {
       await connection.query(`
         INSERT INTO users (username, email, first_name, last_name, age, city) VALUES
         ('john_doe', 'john@example.com', 'John', 'Doe', 28, 'New York'),
@@ -67,6 +68,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/health', async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query('SELECT 1 + 1 AS solution');
+    const result = rows as any[];
     res.json({ 
       success: true,
       status: 'healthy', 
@@ -87,10 +89,11 @@ app.get('/api/health', async (req: Request, res: Response) => {
 app.get('/api/users', async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
+    const users = rows as any[];
     res.json({ 
       success: true, 
-      data: rows,
-      count: Array.isArray(rows) ? rows.length : 0
+      data: users,
+      count: users.length
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -103,10 +106,11 @@ app.post('/api/users', async (req: Request, res: Response) => {
     const { username, email, first_name, last_name, age, city } = req.body;
     
     if (!username || !email) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Username and email are required' 
       });
+      return;
     }
 
     const [result] = await pool.query(
@@ -115,7 +119,9 @@ app.post('/api/users', async (req: Request, res: Response) => {
       [username, email, first_name || null, last_name || null, age || null, city || null]
     );
     
-    const [newUser] = await pool.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+    const insertResult = result as any;
+    const [newUserRows] = await pool.query('SELECT * FROM users WHERE id = ?', [insertResult.insertId]);
+    const newUser = newUserRows as any[];
     
     res.status(201).json({ 
       success: true, 
@@ -124,10 +130,11 @@ app.post('/api/users', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Username or email already exists' 
       });
+      return;
     }
     res.status(500).json({ success: false, error: error.message });
   }
@@ -137,9 +144,11 @@ app.post('/api/users', async (req: Request, res: Response) => {
 app.delete('/api/users/:id', async (req: Request, res: Response) => {
   try {
     const [result] = await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+    const deleteResult = result as any;
     
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    if (deleteResult.affectedRows === 0) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
     }
     
     res.json({ success: true, message: 'User deleted successfully' });
@@ -151,10 +160,13 @@ app.delete('/api/users/:id', async (req: Request, res: Response) => {
 // Dashboard stats
 app.get('/api/dashboard', async (req: Request, res: Response) => {
   try {
-    const [totalResult] = await pool.query('SELECT COUNT(*) as count FROM users');
-    const [ageResult] = await pool.query('SELECT AVG(age) as avg FROM users WHERE age IS NOT NULL');
+    const [totalRows] = await pool.query('SELECT COUNT(*) as count FROM users');
+    const totalResult = totalRows as any[];
     
-    const [cityResult] = await pool.query(`
+    const [ageRows] = await pool.query('SELECT AVG(age) as avg FROM users WHERE age IS NOT NULL');
+    const ageResult = ageRows as any[];
+    
+    const [cityRows] = await pool.query(`
       SELECT city, COUNT(*) as count 
       FROM users 
       WHERE city IS NOT NULL 
@@ -162,18 +174,20 @@ app.get('/api/dashboard', async (req: Request, res: Response) => {
       ORDER BY count DESC 
       LIMIT 3
     `);
+    const cityResult = cityRows as any[];
     
-    const [todayResult] = await pool.query(`
+    const [todayRows] = await pool.query(`
       SELECT COUNT(*) as count 
       FROM users 
       WHERE DATE(created_at) = CURDATE()
     `);
+    const todayResult = todayRows as any[];
     
     res.json({
       success: true,
       data: {
         totalUsers: totalResult[0].count,
-        averageAge: Math.round(ageResult[0].avg) || 0,
+        averageAge: Math.round(ageResult[0]?.avg || 0),
         topCities: cityResult,
         newToday: todayResult[0].count,
         timestamp: new Date().toISOString()
@@ -204,6 +218,5 @@ app.listen(PORT, () => {
   console.log(`📌 URL: http://localhost:${PORT}`);
   console.log(`📊 Health: http://localhost:${PORT}/api/health`);
   console.log(`👥 Users: http://localhost:${PORT}/api/users`);
-  console.log(`🔧 Hot reload enabled - edit code and see changes instantly!`);
   console.log('='.repeat(50));
 });
