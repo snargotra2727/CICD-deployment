@@ -59,34 +59,34 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          path: C:\Users\SAKSHAM\Documents\user-management-app
 
       - name: Deployment Info
         run: |
           Write-Host "=== DEPLOYMENT STARTED ===" -ForegroundColor Cyan
           Write-Host "Time: $(Get-Date)" -ForegroundColor Yellow
           Write-Host "Host: $env:COMPUTERNAME" -ForegroundColor Yellow
-          Write-Host "==========================" -ForegroundColor Cyan
+          Write-Host "Working Dir: $(Get-Location)" -ForegroundColor Yellow
 
       - name: Stop and remove old containers
         run: |
-          cd C:\Users\SAKSHAM\Documents\user-management-app
+          Set-Location -Path "C:\Users\SAKSHAM\Documents\user-management-app"
           docker-compose down -v
           docker system prune -f
 
       - name: Build fresh images
         run: |
-          cd C:\Users\SAKSHAM\Documents\user-management-app
+          Set-Location -Path "C:\Users\SAKSHAM\Documents\user-management-app"
           docker-compose build --no-cache
 
       - name: Start containers
         run: |
-          cd C:\Users\SAKSHAM\Documents\user-management-app
+          Set-Location -Path "C:\Users\SAKSHAM\Documents\user-management-app"
           docker-compose up -d
 
       - name: Wait for services
-        run: |
-          Write-Host "Waiting for services to start..." -ForegroundColor Yellow
-          Start-Sleep -Seconds 15
+        run: Start-Sleep -Seconds 15
 
       - name: Health Check
         run: |
@@ -100,13 +100,12 @@ jobs:
             }
           } catch {
             Write-Host "✗ Failed to connect to backend" -ForegroundColor Red
+            $_.Exception.Message
             exit 1
           }
 
       - name: Show Running Containers
-        run: |
-          Write-Host "`n=== Running Containers ===" -ForegroundColor Cyan
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        run: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
       - name: Deployment Complete
         run: |
@@ -115,5 +114,3 @@ jobs:
           Write-Host "======================================" -ForegroundColor Green
           Write-Host "Frontend: http://localhost:4200" -ForegroundColor Cyan
           Write-Host "Backend API: http://localhost:3000/api" -ForegroundColor Cyan
-          Write-Host "Database: localhost:3307" -ForegroundColor Cyan
-          Write-Host "======================================" -ForegroundColor Green
