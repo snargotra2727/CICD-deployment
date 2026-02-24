@@ -60,30 +60,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Show current directory and user
+      - name: Show deployment info
         run: |
-          Write-Host "Current directory: $(Get-Location)" -ForegroundColor Cyan
-          Write-Host "Current user: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)" -ForegroundColor Yellow
-          Write-Host "Is Administrator: $([System.Security.Principal.WindowsPrincipal]::new([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator))" -ForegroundColor Yellow
+          Write-Host "======================================" -ForegroundColor Cyan
+          Write-Host "DEPLOYMENT STARTED" -ForegroundColor Cyan
+          Write-Host "======================================" -ForegroundColor Cyan
+          Write-Host "Time: $(Get-Date)" -ForegroundColor Yellow
+          Write-Host "Directory: $(Get-Location)" -ForegroundColor Yellow
 
-      - name: Stop and remove old containers (with elevated command)
+      - name: Stop and remove old containers
         run: |
-          # Try using elevated command
-          $process = Start-Process -FilePath "docker-compose" -ArgumentList "down -v" -WorkingDirectory "${{ github.workspace }}" -NoNewWindow -Wait -PassThru -Verb RunAs
-          if ($process.ExitCode -ne 0) {
-            Write-Host "Failed with elevated, trying normal..." -ForegroundColor Yellow
-            docker-compose down -v
-          }
+          Write-Host "Stopping old containers..." -ForegroundColor Yellow
+          docker-compose down -v
           docker system prune -f
 
       - name: Build fresh images
         run: |
-          cd ${{ github.workspace }}
+          Write-Host "Building fresh images..." -ForegroundColor Yellow
           docker-compose build --no-cache
 
       - name: Start containers
         run: |
-          cd ${{ github.workspace }}
+          Write-Host "Starting containers..." -ForegroundColor Yellow
           docker-compose up -d
 
       - name: Wait for services
@@ -91,27 +89,31 @@ jobs:
 
       - name: Health Check
         run: |
+          Write-Host "Checking backend health..." -ForegroundColor Yellow
           try {
             $response = Invoke-WebRequest -Uri http://localhost:3000/api/health -UseBasicParsing
             if ($response.StatusCode -eq 200) {
-              Write-Host "✓ Backend is healthy!" -ForegroundColor Green
+              Write-Host "✅ Backend is healthy!" -ForegroundColor Green
             } else {
-              Write-Host "✗ Health check failed" -ForegroundColor Red
+              Write-Host "❌ Health check failed" -ForegroundColor Red
               exit 1
             }
           } catch {
-            Write-Host "✗ Failed to connect to backend" -ForegroundColor Red
-            $_.Exception.Message
+            Write-Host "❌ Failed to connect to backend" -ForegroundColor Red
+            Write-Host "Error: $_" -ForegroundColor Red
             exit 1
           }
 
-      - name: Show Running Containers
-        run: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+      - name: Show running containers
+        run: |
+          Write-Host "`nRunning containers:" -ForegroundColor Cyan
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-      - name: Deployment Complete
+      - name: Deployment complete
         run: |
           Write-Host "`n======================================" -ForegroundColor Green
-          Write-Host "✓ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
+          Write-Host "✅ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
           Write-Host "======================================" -ForegroundColor Green
           Write-Host "Frontend: http://localhost:4200" -ForegroundColor Cyan
           Write-Host "Backend API: http://localhost:3000/api" -ForegroundColor Cyan
+          Write-Host "Database: localhost:3307" -ForegroundColor Cyan
