@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile
     container_name: user-management-backend-dev
     ports:
-      - "3000:3000"
-    #  - "9229:9229" # Debug port
+      - "3000:3000"      # API port
+      - "9229:9229"      # Debug port for Chrome DevTools
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -22,7 +22,8 @@ services:
     networks:
       - user-management-network
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   # Frontend with hot-reload for development
   frontend:
