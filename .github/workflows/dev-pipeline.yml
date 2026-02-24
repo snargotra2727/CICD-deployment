@@ -59,19 +59,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        # This will checkout to: C:\actions-runner\_work\CICD-deployment\CICD-deployment
 
-      - name: Show current directory
+      - name: Show current directory and user
         run: |
           Write-Host "Current directory: $(Get-Location)" -ForegroundColor Cyan
-          Write-Host "Files in directory:" -ForegroundColor Yellow
-          Get-ChildItem
+          Write-Host "Current user: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)" -ForegroundColor Yellow
+          Write-Host "Is Administrator: $([System.Security.Principal.WindowsPrincipal]::new([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator))" -ForegroundColor Yellow
 
-      - name: Stop and remove old containers
+      - name: Stop and remove old containers (with elevated command)
         run: |
-          # Use the checked out code location
-          cd ${{ github.workspace }}
-          docker-compose down -v
+          # Try using elevated command
+          $process = Start-Process -FilePath "docker-compose" -ArgumentList "down -v" -WorkingDirectory "${{ github.workspace }}" -NoNewWindow -Wait -PassThru -Verb RunAs
+          if ($process.ExitCode -ne 0) {
+            Write-Host "Failed with elevated, trying normal..." -ForegroundColor Yellow
+            docker-compose down -v
+          }
           docker system prune -f
 
       - name: Build fresh images
