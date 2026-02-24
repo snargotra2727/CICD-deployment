@@ -1,10 +1,11 @@
-name: Development CI
+name: Development CI/CD
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   test-backend:
@@ -24,7 +25,7 @@ jobs:
         working-directory: ./backend
         run: npm install
 
-      - name: Test backend build
+      - name: Build backend
         working-directory: ./backend
         run: npm run build
 
@@ -45,6 +46,66 @@ jobs:
         working-directory: ./frontend/user-management-ui
         run: npm install
 
-      - name: Test frontend build
+      - name: Build frontend
         working-directory: ./frontend/user-management-ui
         run: npm run build
+
+  deploy-local:
+    name: Deploy to Local Machine
+    needs: [test-backend, test-frontend]
+    runs-on: self-hosted
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Show deployment info
+        run: |
+          echo "🚀 Deploying to local machine..."
+          echo "📅 Time: $(Get-Date)"
+          echo "💻 Host: $env:COMPUTERNAME"
+
+      - name: Stop and remove old containers
+        run: |
+          cd C:\Users\SAKSHAM\Documents\user-management-app
+          docker-compose down -v
+          docker system prune -f
+
+      - name: Build fresh images
+        run: |
+          cd C:\Users\SAKSHAM\Documents\user-management-app
+          docker-compose build --no-cache
+
+      - name: Start containers
+        run: |
+          cd C:\Users\SAKSHAM\Documents\user-management-app
+          docker-compose up -d
+
+      - name: Wait for services to be ready
+        run: |
+          Start-Sleep -Seconds 10
+
+      - name: Health check
+        run: |
+          $response = curl -UseBasicParsing http://localhost:3000/api/health
+          if ($response.StatusCode -eq 200) {
+            Write-Host "✅ Backend is healthy!" -ForegroundColor Green
+          } else {
+            Write-Host "❌ Health check failed" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Show running containers
+        run: |
+          Write-Host "📦 Running containers:" -ForegroundColor Cyan
+          docker ps
+
+      - name: Deployment complete
+        run: |
+          Write-Host "="*50 -ForegroundColor Green
+          Write-Host "✅ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
+          Write-Host "📱 Frontend: http://localhost:4200" -ForegroundColor Cyan
+          Write-Host "🔧 Backend API: http://localhost:3000/api" -ForegroundColor Cyan
+          Write-Host "🗄️ Database: localhost:3307" -ForegroundColor Cyan
+          Write-Host "="*50 -ForegroundColor Green
