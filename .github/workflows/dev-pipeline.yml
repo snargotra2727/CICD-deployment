@@ -5,7 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   test-backend:
@@ -60,11 +60,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Show deployment info
+      - name: Deployment Info
         run: |
-          echo "🚀 Deploying to local machine..."
-          echo "📅 Time: $(Get-Date)"
-          echo "💻 Host: $env:COMPUTERNAME"
+          Write-Host "=== DEPLOYMENT STARTED ===" -ForegroundColor Cyan
+          Write-Host "Time: $(Get-Date)" -ForegroundColor Yellow
+          Write-Host "Host: $env:COMPUTERNAME" -ForegroundColor Yellow
+          Write-Host "==========================" -ForegroundColor Cyan
 
       - name: Stop and remove old containers
         run: |
@@ -82,30 +83,37 @@ jobs:
           cd C:\Users\SAKSHAM\Documents\user-management-app
           docker-compose up -d
 
-      - name: Wait for services to be ready
+      - name: Wait for services
         run: |
-          Start-Sleep -Seconds 10
+          Write-Host "Waiting for services to start..." -ForegroundColor Yellow
+          Start-Sleep -Seconds 15
 
-      - name: Health check
+      - name: Health Check
         run: |
-          $response = curl -UseBasicParsing http://localhost:3000/api/health
-          if ($response.StatusCode -eq 200) {
-            Write-Host "✅ Backend is healthy!" -ForegroundColor Green
-          } else {
-            Write-Host "❌ Health check failed" -ForegroundColor Red
+          try {
+            $response = Invoke-WebRequest -Uri http://localhost:3000/api/health -UseBasicParsing
+            if ($response.StatusCode -eq 200) {
+              Write-Host "✓ Backend is healthy!" -ForegroundColor Green
+            } else {
+              Write-Host "✗ Health check failed" -ForegroundColor Red
+              exit 1
+            }
+          } catch {
+            Write-Host "✗ Failed to connect to backend" -ForegroundColor Red
             exit 1
           }
 
-      - name: Show running containers
+      - name: Show Running Containers
         run: |
-          Write-Host "📦 Running containers:" -ForegroundColor Cyan
-          docker ps
+          Write-Host "`n=== Running Containers ===" -ForegroundColor Cyan
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-      - name: Deployment complete
+      - name: Deployment Complete
         run: |
-          Write-Host "="*50 -ForegroundColor Green
-          Write-Host "✅ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
-          Write-Host "📱 Frontend: http://localhost:4200" -ForegroundColor Cyan
-          Write-Host "🔧 Backend API: http://localhost:3000/api" -ForegroundColor Cyan
-          Write-Host "🗄️ Database: localhost:3307" -ForegroundColor Cyan
-          Write-Host "="*50 -ForegroundColor Green
+          Write-Host "`n======================================" -ForegroundColor Green
+          Write-Host "✓ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
+          Write-Host "======================================" -ForegroundColor Green
+          Write-Host "Frontend: http://localhost:4200" -ForegroundColor Cyan
+          Write-Host "Backend API: http://localhost:3000/api" -ForegroundColor Cyan
+          Write-Host "Database: localhost:3307" -ForegroundColor Cyan
+          Write-Host "======================================" -ForegroundColor Green
