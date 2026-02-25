@@ -1,19 +1,12 @@
-FROM node:20-alpine
+FROM node:18
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-COPY angular.json ./
-COPY tsconfig*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy source code
-COPY src ./src
-COPY public ./public
+COPY . .
 
 EXPOSE 4200
 
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200", "--disable-host-check"]
+CMD ["npm", "start"]
