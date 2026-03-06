@@ -1,0 +1,56 @@
+services:
+  mysql-staging:
+    image: mysql:8.0
+    container_name: mysql-staging
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: user_management_staging
+    volumes:
+      - mysql_data_staging:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - staging-network
+
+  backend-staging:
+    build: ./backend
+    container_name: backend-staging
+    ports:
+      - "3001:3000"
+    environment:
+      DB_HOST: mysql-staging
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: user_management_staging
+      NODE_ENV: staging
+    depends_on:
+      mysql-staging:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - staging-network
+
+  frontend-staging:
+    build: ./frontend/user-management-ui
+    container_name: frontend-staging
+    ports:
+      - "81:80"
+    depends_on:
+      - backend-staging
+    restart: unless-stopped
+    networks:
+      - staging-network
+
+volumes:
+  mysql_data_staging:
+
+networks:
+  staging-network:
+    driver: bridge

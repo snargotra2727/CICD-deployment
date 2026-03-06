@@ -1,0 +1,107 @@
+name: Production CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  check-runner:
+    name: Check Runner
+    runs-on: self-hosted
+    steps:
+      - name: Verify Runner Permissions
+        shell: powershell
+        run: |
+          Write-Host "Checking runner permissions..." -ForegroundColor Yellow
+          $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+          if ($isAdmin) {
+            Write-Host "✅ Runner is running as Administrator" -ForegroundColor Green
+          } else {
+            Write-Host "❌ Runner is NOT running as Administrator" -ForegroundColor Red
+            exit 1
+          }
+
+  build-backend:
+    name: Build Backend
+    runs-on: self-hosted
+    needs: check-runner
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Backend Image
+        shell: powershell
+        run: |
+          Write-Host "Building backend image..." -ForegroundColor Yellow
+          cd production/backend
+          docker build -t prod-backend .
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: self-hosted
+    needs: build-backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Frontend Image
+        shell: powershell
+        run: |
+          Write-Host "Building frontend image..." -ForegroundColor Yellow
+          cd production/frontend/user-management-ui
+          docker build -t prod-frontend .
+
+  deploy:
+    name: Deploy Locally
+    runs-on: self-hosted
+    needs: build-frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy Production
+        shell: powershell
+        run: |
+          Write-Host "Deploying production application..." -ForegroundColor Yellow
+          cd production
+          docker compose down -v
+          docker compose up -d
+          
+      - name: Wait for services
+        shell: powershell
+        run: Start-Sleep -Seconds 20
+
+      - name: Health Check
+        shell: powershell
+        run: |
+          $retries = 12
+          for ($i = 0; $i -lt $retries; $i++) {
+            try {
+              $res = Invoke-WebRequest http://localhost:3000/api/health -TimeoutSec 3
+              if ($res.StatusCode -eq 200) {
+                Write-Host "✅ Production is healthy!" -ForegroundColor Green
+                exit 0
+              }
+            } catch {
+              Write-Host "Waiting for production... ($i/$retries)" -ForegroundColor Yellow
+            }
+            Start-Sleep -Seconds 5
+          }
+          exit 1
+
+      - name: Show Containers
+        shell: powershell
+        run: |
+          Write-Host "`nRunning containers:" -ForegroundColor Cyan
+          docker ps --filter "name=prod" --format "table {{.Names}}\t{{.Status}}"
+
+      - name: Deployment Complete
+        shell: powershell
+        run: |
+          Write-Host "`n" + "="*50 -ForegroundColor Green
+          Write-Host "✅ PRODUCTION DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
+          Write-Host "="*50 -ForegroundColor Green
+          Write-Host "Frontend: http://localhost" -ForegroundColor Cyan
+          Write-Host "Backend API: http://localhost:3000/api" -ForegroundColor Cyan
+          Write-Host "="*50 -ForegroundColor Green
